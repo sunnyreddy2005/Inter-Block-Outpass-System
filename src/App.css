@@ -1,0 +1,67 @@
+/* Global App Styles - Ensure Font Visibility */
+.App {
+  color: #1e293b;
+  background-color: #ffffff;
+}
+
+/* Ensure all text elements are visible */
+* {
+  color: inherit;
+}
+
+/* Override any potential invisible text */
+h1, h2, h3, h4, h5, h6 {
+  color: #1e293b !important;
+}
+
+p, span, div, label, input, textarea, select, button {
+  color: inherit;
+}
+
+/* Specific overrides for common elements */
+input, textarea, select {
+  color: #1e293b !important;
+  background-color: #ffffff;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1;
+}
+
+/* Button text visibility */
+button {
+  color: inherit;
+}
+
+/* Ensure form elements are visible */
+.form-group label {
+  color: #1e293b !important;
+}
+
+.form-group input {
+  color: #1e293b !important;
+}
+
+/* Card content visibility */
+.card-title {
+  color: #1e293b !important;
+}
+
+.card-subtitle {
+  color: #64748b !important;
+}
+
+/* Table and list visibility */
+table, th, td {
+  color: #1e293b !important;
+}
+
+/* Navigation text */
+.nav-tab {
+  color: inherit !important;
+}
+
+.nav-tab.active {
+  color: white !important;
+}

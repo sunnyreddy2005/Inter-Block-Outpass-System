@@ -5,8 +5,10 @@ import { useAuth } from './context/AuthContext'; // ✅ 1. Import your authentic
 // ✅ 2. CRITICAL FIX: Import fetchTicketsByFaculty instead of fetchTicketsByStudent
 import { fetchAdmins, fetchTicketsByFaculty as fetchMyTickets, submitTicket } from './services/ticketService';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, Send, Eye, Plus, LogOut, FileText } from 'lucide-react';
+import { Calendar, Clock, Send, Eye, Plus, LogOut, FileText, Key } from 'lucide-react';
+import ChangePassword from './ChangePassword';
 import './StudentDashBoard.css'; // Reusing the same CSS file
+import './ChangePassword.css';
 
 const FacultyDashboard = () => {
     const navigate = useNavigate();
@@ -18,6 +20,7 @@ const FacultyDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [showChangePassword, setShowChangePassword] = useState(false);
     const [formData, setFormData] = useState({
         subject: '',
         adminId: '',
@@ -35,7 +38,7 @@ const FacultyDashboard = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Load all admins for department selection
+            // Fetch all admins for department selection and only faculty tickets
             const [adminsData, ticketsData] = await Promise.all([
                 fetchAdmins("All"),
                 fetchMyTickets(currentUser.id)
@@ -68,7 +71,10 @@ const FacultyDashboard = () => {
                 const departmentAdmin = admins.find(admin => admin.branch === value);
                 if (departmentAdmin) {
                     newFormData.adminId = departmentAdmin.id;
-                    console.log(`Auto-assigned ${value} HOD:`, departmentAdmin.name);
+                    console.log(`Auto-assigned admin: ${departmentAdmin.name} for department: ${value}`);
+                } else {
+                    console.log(`No admin found for department: ${value}`);
+                    console.log('Available admins:', admins);
                 }
             }
             
@@ -143,6 +149,13 @@ const FacultyDashboard = () => {
                     </div>
                     <div className="user-section">
                         <span className="user-welcome">Welcome, Prof. <strong>{currentUser.name}</strong></span>
+                        <button 
+                            className="btn btn-secondary" 
+                            onClick={() => setShowChangePassword(true)}
+                            title="Change Password"
+                        >
+                            <Key size={16} /> Change Password
+                        </button>
                         {/* ✅ 5. The logout button now works correctly */}
                         <button className="btn btn-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
                     </div>
@@ -177,25 +190,28 @@ const FacultyDashboard = () => {
                                     <label className="form-label">Department *</label>
                                     <select name="department" value={formData.department} onChange={handleInputChange} required className="form-input">
                                         <option value="">Select Department</option>
-                                        <option value="CSE">Computer Science Engineering (CSE)</option>
-                                        <option value="ECE">Electronics and Communication Engineering (ECE)</option>
-                                        <option value="CSIT">Computer Science and Information Technology (CSIT)</option>
+                                        <option value="CSE">CSE (Computer Science Engineering)</option>
+                                        <option value="ECE">ECE (Electronics & Communication)</option>
+                                        <option value="CSIT">CSIT (Computer Science & Information Technology)</option>
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">
-                                        {formData.department ? `Send Request To (${formData.department} HOD)` : 'Recipient (HOD)'}
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        value={formData.department ? 
-                                            (admins.find(admin => admin.branch === formData.department)?.name || 'Loading...') : 
-                                            'Please select department first'
-                                        } 
-                                        disabled 
-                                        className="form-input disabled-input"
-                                        style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-                                    />
+                                    <label className="form-label">Recipient (Admin) *</label>
+                                    <select name="adminId" value={formData.adminId} onChange={handleInputChange} required className="form-input" disabled={!formData.department}>
+                                        <option value="">
+                                            {formData.department 
+                                                ? `Auto-assigned: ${admins.find(a => a.branch === formData.department)?.name || 'No admin found'}` 
+                                                : 'Select department first'}
+                                        </option>
+                                        {formData.department && admins
+                                            .filter(admin => admin.branch === formData.department)
+                                            .map((admin) => (
+                                                <option key={admin.id} value={admin.id}>
+                                                    {admin.name} ({admin.email}) - {admin.branch} HOD
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Subject *</label>
@@ -270,6 +286,11 @@ const FacultyDashboard = () => {
                     </div>
                 )}
             </main>
+
+            {/* Change Password Modal */}
+            {showChangePassword && (
+                <ChangePassword onClose={() => setShowChangePassword(false)} />
+            )}
         </div>
     );
 };

@@ -170,8 +170,8 @@ const Login = () => {
                     <p className="university-name">Hyderabad.</p>
                     <p className="rights-reserved">All rights reserved.</p>
                 </div>
-                <button className="guest-access">Access as a guest</button>
-                <div className="cookies-notice">Cookies notice</div>
+               
+                
             </div>
         </div>
     );

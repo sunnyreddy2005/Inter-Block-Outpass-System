@@ -1,25 +1,34 @@
 // src/services/ticketService.js
 import { supabase } from '../supabaseClient';
 
-// This function fetches admins based on branch
+// Fetch admins by branch for department-based routing
 export const fetchAdmins = async (branch) => {
-  let query = supabase
-    .from('admins')
-    .select('id, name, email, branch')
-    .order('name');
-  
-  // If specific branch is requested, filter by that branch
-  if (branch && branch !== "All") {
-    query = query.eq('branch', branch);
+  if (branch === "All") {
+    // Fetch all admins when "All" is requested
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id, name, email, branch')
+      .order('name');
+      
+    if (error) {
+      console.error('Error fetching all admins:', error.message);
+      throw new Error(error.message);
+    }
+    return data;
+  } else {
+    // Fetch admins for specific branch
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id, name, email, branch')
+      .eq('branch', branch)
+      .order('name');
+      
+    if (error) {
+      console.error('Error fetching admins by branch:', error.message);
+      throw new Error(error.message);
+    }
+    return data;
   }
-  
-  const { data, error } = await query;
-    
-  if (error) {
-    console.error('Error fetching admins:', error.message);
-    throw new Error(error.message);
-  }
-  return data;
 };
 
 // This function remains the same
@@ -152,4 +161,60 @@ export const verifyOtp = async (email, otp) => {
   }
 
   return result;
+};
+
+// Password change functionality
+export const changePassword = async (userId, userRole, currentPassword, newPassword) => {
+  try {
+    // Determine the correct table based on user role
+    let tableName;
+    switch (userRole) {
+      case 'student':
+        tableName = 'students';
+        break;
+      case 'faculty':
+        tableName = 'faculty';
+        break;
+      case 'admin':
+        tableName = 'admins';
+        break;
+      case 'vo':
+        tableName = 'vo_officers';
+        break;
+      default:
+        throw new Error('Invalid user role');
+    }
+
+    // First, verify the current password
+    const { data: user, error: fetchError } = await supabase
+      .from(tableName)
+      .select('password')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      throw new Error('Failed to fetch user data');
+    }
+
+    if (user.password !== currentPassword) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Update the password
+    const { data, error } = await supabase
+      .from(tableName)
+      .update({ password: newPassword })
+      .eq('id', userId)
+      .select('id, name, email')
+      .single();
+
+    if (error) {
+      throw new Error('Failed to update password');
+    }
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (error) {
+    console.error('Error changing password:', error.message);
+    throw error;
+  }
 };

@@ -5,8 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import * as ticketService from './services/ticketService';
 import { toast } from 'react-toastify';
-import { Clock, Send, Eye, Plus, LogOut, FileText, RefreshCw, User, Camera, Edit2, Save, X } from 'lucide-react';
+import { Clock, Send, Eye, Plus, LogOut, FileText, RefreshCw, User, Camera, Edit2, Save, X, Key } from 'lucide-react';
+import ChangePassword from './ChangePassword';
 import './StudentDashBoard.css';
+import './ChangePassword.css';
 
 // =======================================================================
 // FEATURE: OTP Countdown Timer Component
@@ -63,6 +65,7 @@ const StudentDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [showChangePassword, setShowChangePassword] = useState(false);
     const [formData, setFormData] = useState({
         subject: '',
         adminId: '',
@@ -130,7 +133,10 @@ const StudentDashboard = () => {
                 const departmentAdmin = admins.find(admin => admin.branch === value);
                 if (departmentAdmin) {
                     newFormData.adminId = departmentAdmin.id;
-                    console.log(`Auto-assigned ${value} HOD:`, departmentAdmin.name);
+                    console.log(`Auto-assigned admin: ${departmentAdmin.name} for department: ${value}`);
+                } else {
+                    console.log(`No admin found for department: ${value}`);
+                    console.log('Available admins:', admins);
                 }
             }
             
@@ -336,6 +342,13 @@ const StudentDashboard = () => {
                              title="View Profile"
                          >
                              <User size={16} /> Profile
+                         </button>
+                         <button 
+                             className="btn btn-secondary" 
+                             onClick={() => setShowChangePassword(true)}
+                             title="Change Password"
+                         >
+                             <Key size={16} /> Change Password
                          </button>
                          <button className="btn btn-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
                      </div>
@@ -704,6 +717,11 @@ const StudentDashboard = () => {
                     </div>
                  )}
             </main>
+
+            {/* Change Password Modal */}
+            {showChangePassword && (
+                <ChangePassword onClose={() => setShowChangePassword(false)} />
+            )}
         </div>
     );
 };

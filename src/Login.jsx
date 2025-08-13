@@ -38,7 +38,7 @@ const Login = () => {
         setError('');
         console.log(`Attempting login for email: ${email}`);
 
-        const tables = ['admins', 'students', 'faculty', 'vo_officers'];
+        const tables = ['admins', 'students', 'faculty', 'vo_officers', 'controllers'];
 
         for (let table of tables) {
             try {
@@ -63,7 +63,11 @@ const Login = () => {
                     // Do not log the password for security
                     if (data.password === password) {
                         console.log('Password MATCHES.');
-                        const role = table === 'admins' ? 'admin' : (table === 'students' ? 'student' : (table === 'faculty' ? 'faculty' : 'vo'));
+                        const role = table === 'admins' ? 'admin' : 
+                                   table === 'students' ? 'student' : 
+                                   table === 'faculty' ? 'faculty' : 
+                                   table === 'vo_officers' ? 'vo' : 
+                                   table === 'controllers' ? 'controller' : 'unknown';
 
                         const userData = {
                             id: data.id,
@@ -84,6 +88,8 @@ const Login = () => {
                             navigate('/faculty-dashboard');
                         } else if (role === 'vo') {
                             navigate('/vo-portal');
+                        } else if (role === 'controller') {
+                            navigate('/controller-panel');
                         }
                         return;
                     } else {

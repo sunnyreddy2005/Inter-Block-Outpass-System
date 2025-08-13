@@ -68,11 +68,18 @@ const FacultyDashboard = () => {
             
             // Auto-assign adminId when department changes
             if (name === 'department' && value) {
-                const departmentAdmin = admins.find(admin => admin.branch === value);
-                if (departmentAdmin) {
-                    newFormData.adminId = departmentAdmin.id;
-                    console.log(`Auto-assigned admin: ${departmentAdmin.name} for department: ${value}`);
+                const departmentAdmins = admins.filter(admin => admin.branch === value);
+                if (departmentAdmins.length === 1) {
+                    // Only one HOD for this department, auto-assign
+                    newFormData.adminId = departmentAdmins[0].id;
+                    console.log(`Auto-assigned admin: ${departmentAdmins[0].name} for department: ${value}`);
+                } else if (departmentAdmins.length > 1) {
+                    // Multiple HODs, let user choose
+                    newFormData.adminId = '';
+                    console.log(`Multiple HODs found for department: ${value}. User needs to select.`);
                 } else {
+                    // No HOD found
+                    newFormData.adminId = '';
                     console.log(`No admin found for department: ${value}`);
                     console.log('Available admins:', admins);
                 }
@@ -199,9 +206,11 @@ const FacultyDashboard = () => {
                                     <label className="form-label">Recipient (Admin) *</label>
                                     <select name="adminId" value={formData.adminId} onChange={handleInputChange} required className="form-input" disabled={!formData.department}>
                                         <option value="">
-                                            {formData.department 
-                                                ? `Auto-assigned: ${admins.find(a => a.branch === formData.department)?.name || 'No admin found'}` 
-                                                : 'Select department first'}
+                                            {!formData.department 
+                                                ? 'Select department first'
+                                                : admins.filter(a => a.branch === formData.department).length === 1
+                                                    ? `Auto-assigned: ${admins.find(a => a.branch === formData.department)?.name || 'No admin found'}`
+                                                    : 'Select HOD'}
                                         </option>
                                         {formData.department && admins
                                             .filter(admin => admin.branch === formData.department)

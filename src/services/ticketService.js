@@ -181,6 +181,9 @@ export const changePassword = async (userId, userRole, currentPassword, newPassw
       case 'vo':
         tableName = 'vo_officers';
         break;
+      case 'controller':
+        tableName = 'controllers';
+        break;
       default:
         throw new Error('Invalid user role');
     }

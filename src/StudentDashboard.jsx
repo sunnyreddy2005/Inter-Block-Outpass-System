@@ -130,11 +130,18 @@ const StudentDashboard = () => {
             
             // Auto-assign adminId when department changes
             if (name === 'department' && value) {
-                const departmentAdmin = admins.find(admin => admin.branch === value);
-                if (departmentAdmin) {
-                    newFormData.adminId = departmentAdmin.id;
-                    console.log(`Auto-assigned admin: ${departmentAdmin.name} for department: ${value}`);
+                const departmentAdmins = admins.filter(admin => admin.branch === value);
+                if (departmentAdmins.length === 1) {
+                    // Only one HOD for this department, auto-assign
+                    newFormData.adminId = departmentAdmins[0].id;
+                    console.log(`Auto-assigned admin: ${departmentAdmins[0].name} for department: ${value}`);
+                } else if (departmentAdmins.length > 1) {
+                    // Multiple HODs, let user choose
+                    newFormData.adminId = '';
+                    console.log(`Multiple HODs found for department: ${value}. User needs to select.`);
                 } else {
+                    // No HOD found
+                    newFormData.adminId = '';
                     console.log(`No admin found for department: ${value}`);
                     console.log('Available admins:', admins);
                 }
@@ -512,6 +519,24 @@ const StudentDashboard = () => {
                                     </select>
                                 </div>
                                 
+                                {/* Show HOD selection if multiple HODs exist for the department */}
+                                {formData.department && (() => {
+                                    const departmentAdmins = admins.filter(admin => admin.branch === formData.department);
+                                    return departmentAdmins.length > 1 ? (
+                                        <div className="form-group">
+                                            <label className="form-label">Select HOD</label>
+                                            <select name="adminId" value={formData.adminId} onChange={handleInputChange} required className="form-input">
+                                                <option value="">-- Please Select HOD --</option>
+                                                {departmentAdmins.map(admin => (
+                                                    <option key={admin.id} value={admin.id}>
+                                                        {admin.name} ({admin.email})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ) : null;
+                                })()}
+                                
                                 {formData.department && formData.adminId && (
                                     <div className="form-group">
                                         <label className="form-label">Request will be sent to</label>
@@ -519,7 +544,7 @@ const StudentDashboard = () => {
                                             {(() => {
                                                 const selectedAdmin = admins.find(admin => admin.id == formData.adminId);
                                                 return selectedAdmin ? 
-                                                    `${selectedAdmin.name} - ${selectedAdmin.department} HOD (${selectedAdmin.email})` : 
+                                                    `${selectedAdmin.name} - ${selectedAdmin.branch} HOD (${selectedAdmin.email})` : 
                                                     `${formData.department} HOD`;
                                             })()}
                                         </div>

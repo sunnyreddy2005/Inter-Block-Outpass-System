@@ -641,15 +641,15 @@ const StudentDashboard = () => {
                  ) : (
                     <div className="card">
                         <div className="card-header">
-                            <h2 className="card-title">My Travel Requests</h2>
+                            <h2 className="card-title">My Requests</h2>
                             <p className="card-subtitle">View the status of your submitted requests and access approval codes</p>
                         </div>
                         <div className="ticket-list">
                             {tickets.length === 0 ? (
                                 <div className="empty-state">
-                                    <p>You haven't submitted any travel requests yet.</p>
+                                    <p>You haven't submitted any requests yet.</p>
                                     <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#64748b' }}>
-                                        Click "Submit New Request" to create your first travel request.
+                                        Click "Submit New Request" to create your first request.
                                     </p>
                                 </div>
                             ) : (

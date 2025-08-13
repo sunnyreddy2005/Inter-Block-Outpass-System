@@ -1,6 +1,7 @@
 // src/ControllerPanel.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 import { Key, User, Trash2, Edit2, Plus, CheckCircle, XCircle, FileText, LogOut } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -10,6 +11,7 @@ const branches = ['CSE', 'ECE', 'CSIT'];
 
 const ControllerPanel = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [hods, setHods] = useState([]);
   const [faculty, setFaculty] = useState([]);
   const [allTickets, setAllTickets] = useState([]);
@@ -46,34 +48,62 @@ const ControllerPanel = () => {
   const fetchAllTickets = async () => {
     console.log('Fetching all tickets...');
     try {
-      const { data, error } = await supabase
+      // First, fetch all tickets
+      const { data: tickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select(`
-          *,
-          students!inner(name, email),
-          faculty!inner(name, email),
-          admins!inner(name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching tickets:', error);
-        setError(error.message);
-      } else {
-        console.log('Tickets fetched:', data);
-        // Format the tickets with proper creator information
-        const formattedTickets = data.map(ticket => ({
-          ...ticket,
-          creator_display_name: ticket.creator_role === 'student' 
-            ? ticket.students?.name 
-            : ticket.faculty?.name,
-          creator_display_email: ticket.creator_role === 'student' 
-            ? ticket.students?.email 
-            : ticket.faculty?.email,
-          admin_display_name: ticket.admins?.name
-        }));
-        setAllTickets(formattedTickets);
+      if (ticketsError) {
+        console.error('Error fetching tickets:', ticketsError);
+        setError(ticketsError.message);
+        return;
       }
+
+      console.log('Tickets fetched:', tickets);
+
+      // Fetch students, faculty, and admins separately
+      const { data: students } = await supabase.from('students').select('id, name, email');
+      const { data: faculty } = await supabase.from('faculty').select('id, name, email'); 
+      const { data: admins } = await supabase.from('admins').select('id, name');
+
+      // Map the data manually
+      const formattedTickets = tickets.map(ticket => {
+        let creator_display_name = 'Unknown';
+        let creator_display_email = 'Unknown';
+        let admin_display_name = 'Unknown';
+
+        // Find creator info based on creator_role and creator_id
+        if (ticket.creator_role === 'student') {
+          const student = students?.find(s => s.id === ticket.creator_id);
+          if (student) {
+            creator_display_name = student.name;
+            creator_display_email = student.email;
+          }
+        } else if (ticket.creator_role === 'faculty') {
+          const facultyMember = faculty?.find(f => f.id === ticket.creator_id);
+          if (facultyMember) {
+            creator_display_name = facultyMember.name;
+            creator_display_email = facultyMember.email;
+          }
+        }
+
+        // Find admin info
+        const admin = admins?.find(a => a.id === ticket.admin_id);
+        if (admin) {
+          admin_display_name = admin.name;
+        }
+
+        return {
+          ...ticket,
+          creator_display_name,
+          creator_display_email,
+          admin_display_name
+        };
+      });
+
+      setAllTickets(formattedTickets);
+      setError(''); // Clear any previous errors
     } catch (err) {
       console.error('Unexpected error fetching tickets:', err);
       setError('Failed to load tickets');
@@ -141,18 +171,60 @@ const ControllerPanel = () => {
       return;
     }
     
-    if (!window.confirm('Are you sure you want to remove this HOD? This will permanently delete their admin access.')) {
-      console.log('User cancelled deletion');
-      return;
-    }
-    
+    // First check if this admin has any tickets assigned
     try {
-      console.log('Sending delete request to Supabase...');
+      const { data: tickets, error: ticketError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('admin_id', id);
+      
+      if (ticketError) {
+        console.error('Error checking tickets:', ticketError);
+        toast.error('Error checking admin dependencies');
+        return;
+      }
+      
+      if (tickets && tickets.length > 0) {
+        const confirmDelete = window.confirm(
+          `This HOD has ${tickets.length} ticket(s) assigned to them. ` +
+          `Deleting this HOD will also remove all their assigned tickets. ` +
+          `Are you sure you want to proceed?`
+        );
+        
+        if (!confirmDelete) {
+          console.log('User cancelled deletion due to existing tickets');
+          return;
+        }
+        
+        // Delete tickets first, then admin
+        console.log(`Deleting ${tickets.length} tickets first...`);
+        const { error: deleteTicketsError } = await supabase
+          .from('tickets')
+          .delete()
+          .eq('admin_id', id);
+        
+        if (deleteTicketsError) {
+          console.error('Error deleting tickets:', deleteTicketsError);
+          toast.error('Failed to delete associated tickets');
+          return;
+        }
+        
+        console.log('Associated tickets deleted successfully');
+      } else {
+        // No tickets, just confirm admin deletion
+        if (!window.confirm('Are you sure you want to remove this HOD? This will permanently delete their admin access.')) {
+          console.log('User cancelled deletion');
+          return;
+        }
+      }
+      
+      // Now delete the admin
+      console.log('Sending delete request for admin...');
       const { data, error } = await supabase
         .from('admins')
         .delete()
         .eq('id', id)
-        .select(); // Add select to see what was deleted
+        .select();
       
       if (error) {
         console.error('Error removing HOD:', error);
@@ -160,13 +232,17 @@ const ControllerPanel = () => {
         toast.error(`Failed to remove HOD: ${error.message}`);
       } else if (data && data.length > 0) {
         console.log('HOD removed successfully, deleted data:', data);
-        toast.success(`HOD ${data[0].name} removed successfully`);
+        const ticketCount = tickets ? tickets.length : 0;
+        const message = ticketCount > 0 
+          ? `HOD ${data[0].name} and ${ticketCount} associated tickets removed successfully`
+          : `HOD ${data[0].name} removed successfully`;
+        toast.success(message);
         fetchHods();
-        setError(''); // Clear any previous errors
+        setError('');
       } else {
         console.log('No data returned from delete operation');
         toast.warning('HOD may have already been deleted');
-        fetchHods(); // Refresh the list anyway
+        fetchHods();
       }
     } catch (err) {
       console.error('Unexpected error removing HOD:', err);
@@ -223,13 +299,17 @@ const ControllerPanel = () => {
 
   // Logout function
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      // Clear any stored user data
-      localStorage.removeItem('user');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('currentUser');
-      // Navigate to login page
-      navigate('/');
+    console.log('Logout button clicked - this should appear in console');
+    alert('Logout button clicked!'); // Temporary alert for testing
+    
+    try {
+      logout();
+      console.log('AuthContext logout called successfully');
+      navigate('/login');
+      console.log('Navigation attempted');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      alert('Error during logout: ' + error.message);
     }
   };
 
@@ -247,8 +327,11 @@ const ControllerPanel = () => {
             </div>
           </div>
           <div className="header-actions">
-            <button className="btn btn-secondary logout-btn" onClick={handleLogout}>
-              <LogOut size={20} />
+            <button 
+              className="btn btn-logout" 
+              onClick={handleLogout}
+            >
+              <LogOut size={16} />
               Logout
             </button>
           </div>
